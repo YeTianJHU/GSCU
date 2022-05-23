@@ -25,14 +25,14 @@ To install the Multi-agent Particle Environment, please follow https://github.co
     .
     ├── kuhn_poker                      # environment Kuhn Poker
     │   ├── embedding_learning          # OI-PEL training
-    │   ├── conditional_RL              # conditional RL training 
+    │   ├── conditioned_RL              # conditional RL training 
     │   ├── online_test                 # online bayesian adaption for seen/unseen/mix/adaptive settings 
     │   ├── data                        # data for embedding learning and online test sequences 
     │   ├── model_params                # model parameters for OI-PEL/RL/opponents 
     │   └── utils                       # helper functions and environment config
     ├── predator_prey                   # environment Predator Prey
     │   ├── embedding_learning          # OI-PEL training
-    │   ├── conditional_RL              # conditional RL training 
+    │   ├── conditioned_RL              # conditional RL training 
     │   ├── online_test                 # online bayesian adaption for seen/unseen/mix/adaptive settings 
     │   ├── data                        # data for embedding learning and online test sequences 
     │   ├── model_params                # model parameters for OI-PEL/RL/opponents 
