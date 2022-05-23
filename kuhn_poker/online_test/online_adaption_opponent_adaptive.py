@@ -17,7 +17,7 @@ import glob
 from embedding_learning.opponent_models import *
 from online_test.bayesian_update import VariationalInference,EXP3
 from online_adaption import evaluate_exp3,evaluate_vae,evaluate_baseline
-from conditioned_RL.conditional_rl_model import PPO_VAE
+from conditioned_RL.conditioned_rl_model import PPO_VAE
 from conditioned_RL.ppo_model import PPO
 from utils.config_kuhn_poker import Config
 from utils.mypolicy import PolicyKuhn,get_policy_by_vector
