@@ -67,20 +67,20 @@ For mix:
 ```
 * To train the conditional RL model once the OI-PEL model is ready
 ```
-    cd GSCU/predator_prey/conditioned_RL
+    cd GSCU/predator_prey/conditional_RL
     python train.py
 ```
 * To run the online test for seen/unseen/mix settings
 ```
-    cd GSCU/conditioned_RL/bayesian_test
+    cd GSCU/online_test
     python online_adaption.py
 ```
 * To run long sequence for average performance
 ```
    python sequence_test.py
 ```
-You can modify adv_type = 'seen' / 'unseen' / 'mix' to test on different settings. Note that for 'seen' and 'unseen', please load 'policy_vec_sequence_5.p' as policy vector, for 'mix', please load 'policy_vec_sequence_10.p' as policy vector
+You can modify adv_type = 'seen' / 'unseen' / 'mix' to test on different settings. Note that for 'seen' and 'unseen', please load 'policy_vec_sequence_4.p' as policy vector, for 'mix', please load 'policy_vec_sequence_8.p' as policy vector
 * To run the online test for adaptive settings
 ```
-   python adv-ppo.py
+   python adaptive.py
 ```
