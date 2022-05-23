@@ -170,9 +170,10 @@ def main(args):
     agent_vae.init_from_save(conditional_rl_weight_path)
 
     rst_dir = Config.ONLINE_TEST_RST_DIR
+    data_dir = Config.DATA_DIR
 
     # a randomly generated sequence is used. You can create your own.
-    policy_vectors_df = pd.read_pickle('results/fixed_policy_vectors_02.p')
+    policy_vectors_df = pd.read_pickle(data_dir+'online_test_policy_vectors_demo.p')
     if opponent_type == 'seen':
         policy_vectors = policy_vectors_df['seen']
     elif opponent_type == 'unseen':
