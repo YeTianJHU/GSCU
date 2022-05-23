@@ -68,12 +68,12 @@ For mix:
 ```
 * To train the conditional RL model once the OI-PEL model is ready
 ```
-    cd GSCU/predator_prey/conditioned_RL
+    cd GSCU/predator_prey/conditional_RL
     python train.py
 ```
 * To run the online test for seen/unseen/mix settings
 ```
-    cd GSCU/conditioned_RL/online_test
+    cd GSCU/online_test
     python online_adaption.py
 ```
 * To run long sequence for average performance
