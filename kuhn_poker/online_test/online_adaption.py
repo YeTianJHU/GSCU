@@ -139,9 +139,6 @@ def main(args):
     embedding_dim = Config.LATENT_DIM
     hidden_dim = Config.HIDDEN_DIM
 
-    actor_lr = 5e-4  
-    critic_lr = 5e-4 
-
     n_steps = 10 # vi update freq
     this_player = 0 # controlling player
     n_opponent = 200 # total number of opponent switch (we tested 10 sequences with 20 opponents each)
@@ -155,7 +152,6 @@ def main(args):
     print ('opponent_type',opponent_type)
 
     seed = int(args.seed)
-    version += '_' + str(seed)
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
@@ -166,7 +162,7 @@ def main(args):
     opponent_model = OpponentModel(state_dim, n_adv_pool, hidden_dim, embedding_dim, action_dim, encoder_weight_path, decoder_weight_path)
     vi = VariationalInference(opponent_model, latent_dim=embedding_dim, n_update_times=50, game_steps=n_steps)
     exp3 = EXP3(n_action=2, gamma=0.3, min_reward=-2, max_reward=2) # lr of exp3 is set to 0.3
-    agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, actor_lr, critic_lr, encoder_weight_path, n_adv_pool)
+    agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, None, None, encoder_weight_path, n_adv_pool)
     agent_vae.init_from_save(conditional_rl_weight_path)
 
     rst_dir = Config.ONLINE_TEST_RST_DIR
@@ -304,7 +300,7 @@ def main(args):
             'policy_vec_list':policy_vec_list,
             'opponent_list':opponent_list}
 
-        pickle.dump(result, open(rst_dir+'/online_adaption_'+version+'.p', "wb"))
+        pickle.dump(result, open(rst_dir+'online_adaption_'+version+'.p', "wb"))
 
     print ('version',version)
     print ('opponent_type',opponent_type)

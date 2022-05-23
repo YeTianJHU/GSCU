@@ -41,7 +41,7 @@ def train_opponent(game,opponent_p1,agent,agent_type,Transition_p1,latent=None):
         else:
             s = state.information_state_tensor(cur_player)
             if cur_player == 0:
-                if agent_type == 'vae':
+                if agent_type == 'rl':
                     act_vae, action, act_prob_vae = agent.select_action(s,latent)
                 else:
                     action = agent.action(s)
@@ -75,23 +75,20 @@ def main(args):
     embedding_dim = Config.LATENT_DIM
     hidden_dim = Config.HIDDEN_DIM
 
-
+    # opponent lr
     actor_lr = 5e-4 
     critic_lr = 5e-4 
-
+    # discount factor for opponent learning
     gamma = 0.98
 
-    n_steps = 10
-    this_player = 0
-    n_episode = 1000*5
-    n_test = 8000
-    n_test_station = 8000
+    n_steps = 10 # vi update freq
+    this_player = 0 # controling player 0
+    n_episode = 1000*5 
+    n_test = 8000 # number of evaluation epsideos. More than 1000 episodes are recommanded.  
 
-    version = 'vadaptive' 
+    version = args.version 
 
     seed = int(args.seed)
-    version += '_' + str(seed)
-
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
@@ -101,16 +98,10 @@ def main(args):
     conditional_rl_weight_path = Config.RL_MODEL_DIR + args.rl_file
     opponent_p1_weight_path = Config.OPPONENT_MODEL_DIR + 'params_opp_init_' + args.opp_init_id + '.pt'
 
-    # opponent_p1_weight_path = '../conditioned_RL/trained_parameters/PPO/params_vp1_200000.0.pt'
-    # encoder_weight_path = '../VAE/saved_model_params/encoder_vae_param_v26_15.pt'
-    # decoder_weight_path = '../VAE/saved_model_params/decoder_param_v26_15.pt'
-    # ppo_vae_weight_path = '../conditioned_RL/trained_parameters/PPO_VAE/params_v049_300000.0.pt'
-
     opponent_model = OpponentModel(state_dim, n_adv_pool, hidden_dim, embedding_dim, action_dim, encoder_weight_path, decoder_weight_path)
     vi = VariationalInference(opponent_model, latent_dim=embedding_dim, n_update_times=10, game_steps=n_steps)
-    exp3 = EXP3(n_action=2, gamma=0.2, min_reward=-4, max_reward=4)
-
-    agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, actor_lr, critic_lr, encoder_weight_path, n_adv_pool)
+    exp3 = EXP3(n_action=2, gamma=0.3, min_reward=-4, max_reward=4)
+    agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, None, None, encoder_weight_path, n_adv_pool)
     agent_vae.init_from_save(conditional_rl_weight_path)
 
     opponent_p1_exp3 = PPO(state_dim, hidden_dim, action_dim, actor_lr, critic_lr)
@@ -119,6 +110,8 @@ def main(args):
     opponent_p1_vae.init_from_save(opponent_p1_weight_path)
     opponent_p1_ne = PPO(state_dim, hidden_dim, action_dim, actor_lr, critic_lr)
     opponent_p1_ne.init_from_save(opponent_p1_weight_path)
+
+    rst_dir = Config.ONLINE_TEST_RST_DIR
 
     Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'returns'])
     Transition_p1 = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'returns'])
@@ -188,14 +181,14 @@ def main(args):
             ce_list.append(ce)
 
 
-        ################### train opponent
+        # train opponent
         emb_tensor = vi.generate_cur_embedding(is_np=False)
         if agent_selected == 0:
-            train_opponent(game,opponent_p1_exp3,agent_vae,'vae',Transition_p1,latent=emb_tensor)
+            train_opponent(game,opponent_p1_exp3,agent_vae,'rl',Transition_p1,latent=emb_tensor)
         else:
-            train_opponent(game,opponent_p1_exp3,ne_response,'policy',Transition_p1)
-        train_opponent(game,opponent_p1_vae,agent_vae,'vae',Transition_p1,latent=emb_tensor)
-        train_opponent(game,opponent_p1_ne,ne_response,'policy',Transition_p1)
+            train_opponent(game,opponent_p1_exp3,ne_response,'rule_based',Transition_p1)
+        train_opponent(game,opponent_p1_vae,agent_vae,'rl',Transition_p1,latent=emb_tensor)
+        train_opponent(game,opponent_p1_ne,ne_response,'rule_based',Transition_p1)
 
         if j%(n_steps*15) == 0 and j > 0:
             emb = vi.generate_cur_embedding(is_np=True)
@@ -204,13 +197,8 @@ def main(args):
             p = exp3.get_p()
 
             avg_return_vae,return_vae = evaluate_vae(n_test, player, agent_vae, opponent_p1_vae, 'rl', emb_tensor)
-            avg_return_ne,return_ne = evaluate_baseline(n_test_station, player, ne_response, opponent_p1_ne,'rl')
+            avg_return_ne,return_ne = evaluate_baseline(n_test, player, ne_response, opponent_p1_ne,'rl')
             avg_return_exp3,return_exp3 = evaluate_exp3(n_test, player, agent_vae, opponent_p1_exp3, 'rl', emb_tensor,ne_response,exp3)
-
-            print (j,
-                    'exp3', avg_return_exp3, 
-                    'vae', avg_return_vae,
-                    'ne', avg_return_ne)
 
             logging.info("episode: {}, opp init id: {}, gscu: {:.2f}, | greedy: {:.2f}, | ne: {:.2f}".format(
                         j,args.opp_init_id,np.mean(avg_return_exp3),np.mean(avg_return_vae),np.mean(avg_return_ne)))
@@ -232,7 +220,7 @@ def main(args):
         'greedy': global_return_vae_list,
         'ne': global_return_ne_list}
 
-    pickle.dump(result, open('results/online_adaption_opp_adaptive_'+version+'.p', "wb"))
+    pickle.dump(result, open(rst_dir+'online_adaption_opp_adaptive_'+version+'.p', "wb"))
 
     print ('version',version)
     print ('seed',seed)
@@ -241,8 +229,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('-v', '--version', default='v0', help='version')
     parser.add_argument('-seed', '--seed', default=0, help='seed')
-    parser.add_argument('-oid', '--opp_init_id', default='1', 
-                        choices=["seen", "unseen", "mix"], help='type of the opponents')
+    parser.add_argument('-oid', '--opp_init_id', default='1', help='opponents initial weight id')    
     parser.add_argument('-e', '--encoder_file', default='encoder_vae_param_demo.pt', help='vae encoder file')
     parser.add_argument('-d', '--decoder_file', default='decoder_param_demo.pt', help='vae decoder file')
     parser.add_argument('-r', '--rl_file', default='params_demo.pt', help='conditional RL file')
