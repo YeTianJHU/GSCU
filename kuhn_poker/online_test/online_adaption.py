@@ -16,7 +16,7 @@ import pandas as pd
 import glob 
 from embedding_learning.opponent_models import *
 from online_test.bayesian_update import VariationalInference,EXP3
-from conditioned_RL.PPO_VAE_gpu import PPO_VAE
+from conditioned_RL.conditional_rl_model import PPO_VAE
 from utils.config_kuhn_poker import Config
 from utils.mypolicy import PolicyKuhn,get_policy_by_vector,BestResponseKuhn
 from utils.utils import get_p1_region,get_onehot,kl_by_mean_sigma,mse

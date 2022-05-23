@@ -13,7 +13,7 @@ import pickle
 import random
 import pyspiel
 from embedding_learning.opponent_models import *
-from conditioned_RL.PPO_VAE_gpu import PPO_VAE
+from conditioned_RL.conditional_rl_model import PPO_VAE
 from utils.config_kuhn_poker import Config
 from utils.mypolicy import PolicyKuhn,get_policy_by_vector,BestResponseKuhn
 from utils.utils import sample_fixed_vector,get_onehot
