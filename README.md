@@ -3,13 +3,12 @@ Repo for the Greedy when Sure and Conservative when Uncertain about the Opponent
 
 
 ### Requirements:
-Our code is written in python 3. The following packages are needed:
+Our code is written in python 3.x. The following packages are needed:
 ```
 - PyTorch (tested on 1.10.1)
 - pandas
 - joblib
 - scipy
-- sklearn
 - pickle 
 ```
 
