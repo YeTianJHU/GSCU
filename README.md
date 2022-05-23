@@ -20,6 +20,26 @@ To install OpenSpiel
 To install the Multi-agent Particle Environment, please follow https://github.com/openai/multiagent-particle-envs 
 
 
+### Directory Structure
+```
+    .
+    ├── kuhn_poker                      # environment Kuhn Poker
+    │   ├── embedding_learning          # OI-PEL training
+    │   ├── conditional_RL              # conditional RL training 
+    │   ├── online_test                 # online bayesian adaption for seen/unseen/mix/adaptive settings 
+    │   ├── data                        # data for embedding learning and online test sequences 
+    │   ├── model_params                # model parameters for OI-PEL/RL/opponents 
+    │   └── utils                       # helper functions and environment config
+    ├── predator_prey                   # environment Predator Prey
+    │   ├── embedding_learning          # OI-PEL training
+    │   ├── conditional_RL              # conditional RL training 
+    │   ├── online_test                 # online bayesian adaption for seen/unseen/mix/adaptive settings 
+    │   ├── data                        # data for embedding learning and online test sequences 
+    │   ├── model_params                # model parameters for OI-PEL/RL/opponents 
+    │   └── multiagent                  # Multi-agent Particle Environment scenarios
+    ├── LICENSE
+    └── README.md
+```
 
 ### Kuhn Poker
 * To generate the training data for the OI-PEL
