@@ -73,7 +73,7 @@ For mix:
 ```
 * To run the online test for seen/unseen/mix settings
 ```
-    cd GSCU/conditioned_RL/bayesian_test
+    cd GSCU/conditioned_RL/online_test
     python online_adaption.py
 ```
 * To run long sequence for average performance
