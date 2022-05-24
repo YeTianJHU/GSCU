@@ -3,7 +3,7 @@ import random
 
 import os, sys
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
-from conditional_RL.simple_ppo import PPO
+from conditional_RL.ppo_model import PPO
 
 class Policy(object):
     def __init__(self):
@@ -333,7 +333,7 @@ class RandomPolicy(Policy):
         return np.concatenate([u, np.zeros(self.env.world.dim_c)])
 
 class PolicyRL1(Policy):
-    def __init__(self, env, agent_index, param_path = '../conditioned_RL/trained_parameters/PPO_adv/RL1_10000.pt'):
+    def __init__(self, env, agent_index, param_path = '../model_params/opponent/params_opp_init_1.pt'):
         super(PolicyRL1, self).__init__()
         self.env = env
         self.agent_index = agent_index
@@ -348,7 +348,7 @@ class PolicyRL1(Policy):
         return act
 
 class PolicyRL2(Policy):
-    def __init__(self, env, agent_index, param_path = '../conditioned_RL/trained_parameters/PPO_adv/RL2_10000.pt'):
+    def __init__(self, env, agent_index, param_path = '../model_params/opponent/params_opp_init_2.pt'):
         super(PolicyRL2, self).__init__()
         self.env = env
         self.agent_index = agent_index

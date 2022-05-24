@@ -9,11 +9,11 @@ import torch
 from multiagent.environment import MultiAgentEnv
 from multiagent.mypolicy import *
 import multiagent.scenarios as scenarios
-from VAE.opponent_models import *
-from VAE.data_generation import get_all_adv_policies
-from VAE.opponent_models import OpponentModel
-from VAE.bayesian_update import VariationalInference, EXP3, SwitchBoard
-from conditional_RL.GSCU_Greedy import PPO_VAE
+from embedding_learning.opponent_models import *
+from embedding_learning.data_generation import get_all_adv_policies
+from embedding_learning.opponent_models import OpponentModel
+from online_test.bayesian_update import VariationalInference, EXP3, SwitchBoard
+from conditional_RL.conditional_rl_model import PPO_VAE
 
 
 N_ADV = 3
@@ -30,26 +30,27 @@ def get_three_adv_all_policies(env, adv_pool, adv_path):
     return all_policies
 
 def main(args):
-    dataloader = open('policy_vec_sequence_4.p', 'rb')
-    data = pickle.load(dataloader)
-    policy_vec_seq = data['policy_vec_seq']
-    
     gamma = 0.99
     hidden_dim = 128
-    seed = 1
-    actor_lr = args.lr1
-    critic_lr = args.lr2
+    seed = args.seed
+    actor_lr = 1e-4
+    critic_lr = 1e-4
     
     num_episodes = args.num_episodes
     adv_change_freq = 200
-    adv_pool_type = 'seen' # option: 'seen', 'unseen', 'mix'
-    
-    exp_id = 'v57'
-    ckp_num = 10000
-    exp_num = 1
-    test_num = 19
-    test_id = 'v' + str(exp_num) + '_' + adv_pool_type + '_' + str(test_num)
-    print(test_id)
+    adv_pool_type = args.opp_type
+
+    if adv_pool_type == 'mix':
+        dataloader = open('../data/online_test_policy_vec_seq_8.p', 'rb')
+    elif adv_pool_type == 'seen' or adv_pool_type == 'unseen':
+        dataloader = open('../data/online_test_policy_vec_seq_4.p', 'rb')
+    else:
+        print('Please choose seen/unseen/mix')
+
+    data = pickle.load(dataloader)
+    policy_vec_seq = data['policy_vec_seq']
+
+    test_id = args.version
     
     scenario = scenarios.load(args.scenario).Scenario()
     world_VAE = scenario.make_world()
@@ -72,15 +73,15 @@ def main(args):
     action_dim = env_VAE.action_space[env_VAE.n-1].n
     
     embedding_dim = 2
-    encoder_weight_path = '../VAE/saved_model_params/encoder_vae_param.pt'
-    decoder_weight_path = '../VAE/saved_model_params/decoder_param.pt'
+    encoder_weight_path = args.encoder_file
+    decoder_weight_path = args.decoder_file
 
     
     agent_VAE = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, actor_lr, critic_lr, encoder_weight_path, gamma, 4)
     agent_pi = ConservativePolicy(env_pi, env_pi.n-1, epsilon=0.2)
     agent_bandit_pi = ConservativePolicy(env_bandit, env_bandit.n-1, epsilon=0.2)
      
-    ppo_vae_path = '../conditional_RL/trained_parameters/GSCU_Greedy/params_' + exp_id + '_' + str(ckp_num) + '.0.pt'
+    ppo_vae_path = args.rl_file
     agent_VAE.init_from_save(ppo_vae_path)
     return_list_vae = []
     return_list_pi = []
@@ -110,7 +111,7 @@ def main(args):
 
     use_exp3 = True
 
-    cur_adv_idx = 20 * exp_num + 300
+    cur_adv_idx = 300
     for i_episode in range(num_episodes):
         # change opponent policy
         if (i_episode % adv_change_freq == 0):
@@ -223,7 +224,7 @@ def main(args):
         
 
     result_dict = {}
-    result_dict['version'] = exp_id
+    result_dict['version'] = test_id
     result_dict['num_episodes'] = len(return_list_vae)
     result_dict['return_list_vae'] = return_list_vae
     result_dict['return_list_pi'] = return_list_pi
@@ -231,19 +232,25 @@ def main(args):
     
     pickle.dump(result_dict, open('results/sequence_test_'+test_id+'.p', "wb"))
 
-    print('average reward of ppo_vae', float(sum(return_list_vae)/4000))
-    print('average reward of pi_1^*', float(sum(return_list_pi)/4000))
-    print('average reward of bandit', float(sum(return_list_bandit)/4000))
+    print('average reward of ppo_vae', float(sum(return_list_vae)/args.num_episodes))
+    print('average reward of pi_1^*', float(sum(return_list_pi)/args.num_episodes))
+    print('average reward of bandit', float(sum(return_list_bandit)/args.num_episodes))
     
 
                 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('-l1', '--lr1', default=1e-4, help='Actor learning rate')
-    parser.add_argument('-l2', '--lr2', default=1e-4, help='Critic learning rate')
     parser.add_argument('-s', '--scenario', default='simple_tag_partial.py', help='Path of the scenario Python script')
     parser.add_argument('-st', '--steps', default=50, help='Num of steps in a single run')
-    parser.add_argument('-ep', '--num_episodes', default=4000, help='Num of episodes')
+    parser.add_argument('-ep', '--num_episodes', default=20000, help='Num of episodes')
+
+    parser.add_argument('-v', '--version', default='v0', help='version')
+    parser.add_argument('-seed', '--seed', default=0, help='seed')
+    parser.add_argument('-o', '--opp_type', default='seen', 
+                        choices=["seen", "unseen", "mix"], help='type of the opponents')
+    parser.add_argument('-e', '--encoder_file', default='../model_params/VAE/encoder_vae_param_demo.pt', help='vae encoder file')
+    parser.add_argument('-d', '--decoder_file', default='../model_params/VAE/decoder_param_demo.pt', help='vae decoder file')
+    parser.add_argument('-r', '--rl_file', default='../model_params/RL/params_demo.pt', help='conditional RL file')
     args = parser.parse_args()
 
     main(args)
