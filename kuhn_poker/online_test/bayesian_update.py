@@ -10,7 +10,7 @@ from joblib import dump, load
 import math
 
 kl_loss = KLDivLoss(reduction='batchmean')
-ce_loss = CrossEntropyLoss()
+ce_loss = CrossEntropyLoss(reduction='sum')
 
 class VariationalInference():
     def __init__(self, opponent_model, latent_dim=2, n_update_times=20, game_steps=50):
@@ -74,7 +74,8 @@ class VariationalInference():
     def init_all(self):
         self.mu = torch.autograd.Variable(torch.tensor(self.game_steps*[[0.0 for _ in range(self.latent_dim)]]), requires_grad=True)
         self.logvar = torch.autograd.Variable(torch.tensor(self.game_steps*[[0.0 for _ in range(self.latent_dim)]]), requires_grad=True)
-        self.optimizer = torch.optim.Adam([self.mu,self.logvar], lr=0.01)
+        # self.optimizer = torch.optim.Adam([self.mu,self.logvar], lr=0.01)
+        self.optimizer = torch.optim.Adam([self.mu,self.logvar], lr=0.005)
         self.ce_list = []
         self.update_prior()
 
