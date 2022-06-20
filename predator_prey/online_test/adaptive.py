@@ -9,12 +9,12 @@ import torch
 from multiagent.environment import MultiAgentEnv
 from multiagent.mypolicy import *
 import multiagent.scenarios as scenarios
-from VAE.opponent_models import *
-from VAE.opponent_models import OpponentModel
-from VAE.bayesian_update import BayesianUpdater, VariationalInference, EXP3
-from conditional_RL.GSCU_Greedy import PPO_VAE
-from conditional_RL.simple_ppo import PPO
-from online_test.multiple_test import *
+from embedding_learning.opponent_models import *
+from embedding_learning.opponent_models import OpponentModel
+from online_test.bayesian_update import BayesianUpdater, VariationalInference, EXP3
+from conditional_RL.conditional_rl_model import PPO_VAE
+from conditional_RL.ppo_model import PPO
+from utils.multiple_test import *
 
 N_ADV = 3
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -22,23 +22,19 @@ def main(args):
     gamma = 0.99
     Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'reward', 'next_state'])
     hidden_dim = 128
-    seed = 1
-    actor_lr = args.lr1
-    critic_lr = args.lr2
+    seed = args.seed
+    actor_lr = 1e-4
+    critic_lr = 1e-4
 
     num_episodes = args.num_episodes
-    
-    # path option: RL1_10000.pt, RL2_10000.pt, or other ppo weight path as you wish
-    adv_init_path = '../conditional_RL/trained_parameters/PPO_adv/RL2_10000.pt'
-    exp_id = 'v57' # where model param init from
-    ckp_num = 10000
+    adv_init_path = args.adv_file
     ckp_freq = 50
-    test_id = 'v10'
-    print(test_id)
+    test_id = args.version
+    
 
     settings = {}
     settings['adv_init_path'] = adv_init_path
-    settings['params_exp_id'] = exp_id
+    settings['params_exp_id'] = test_id
     settings['seed'] = seed
     
     scenario = scenarios.load(args.scenario).Scenario()
@@ -64,15 +60,15 @@ def main(args):
     action_dim = env_VAE.action_space[env_VAE.n-1].n
     
     embedding_dim = 2 
-    encoder_weight_path = '../VAE/saved_model_params/encoder_vae_param.pt'
-    decoder_weight_path = '../VAE/saved_model_params/decoder_param.pt'
+    encoder_weight_path = args.encoder_file
+    decoder_weight_path = args.decoder_file
 
     
     agent_VAE = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, actor_lr, critic_lr, encoder_weight_path, gamma, 4)
     agent_pi = ConservativePolicy(env_pi, env_pi.n-1, epsilon=0.2)
     agent_bandit_pi = ConservativePolicy(env_bandit, env_bandit.n-1, epsilon=0.2)
 
-    ppo_vae_path = '../conditional_RL/trained_parameters/GSCU_Greedy/params_' + exp_id + '_' + str(ckp_num) + '.0.pt'
+    ppo_vae_path = args.rl_file
     agent_VAE.init_from_save(ppo_vae_path)
 
     return_list_vae = []
@@ -208,19 +204,19 @@ def main(args):
         if i_episode % ckp_freq == 0:
             print('current episode', i_episode)
             play_episodes = 100
-            return_list_vae = return_list_vae + play_multiple_times_without_update_simple(env_VAE, agent_VAE, adv_vae, adv_vae, adv_vae, 'vae', 'rl', play_episodes=play_episodes, latent=cur_latent)
-            return_list_pi = return_list_pi + play_multiple_times_without_update_simple(env_pi, agent_pi, adv_pi, adv_pi, adv_pi, 'rule', 'rl', play_episodes=play_episodes)
-            return_list_bandit = return_list_bandit + play_multiple_times_without_update_bandit(env_bandit, agent_bandit_pi, agent_VAE, adv_bandit, adv_bandit, adv_bandit, 'rl', play_episodes=play_episodes, latent=cur_latent_bandit, p=exp3.get_p()[0], use_exp3=use_exp3)
+            return_list_vae = return_list_vae + play_multiple_times_test(env_VAE, agent_VAE, adv_vae, adv_vae, adv_vae, 'vae', 'rl', play_episodes=play_episodes, latent=cur_latent)
+            return_list_pi = return_list_pi + play_multiple_times_test(env_pi, agent_pi, adv_pi, adv_pi, adv_pi, 'rule', 'rl', play_episodes=play_episodes)
+            return_list_bandit = return_list_bandit + play_multiple_times_test_bandit(env_bandit, agent_bandit_pi, agent_VAE, adv_bandit, adv_bandit, adv_bandit, 'rl', play_episodes=play_episodes, latent=cur_latent_bandit, p=exp3.get_p()[0], use_exp3=use_exp3)
             
             result_dict = {}
-            result_dict['version'] = exp_id
+            result_dict['version'] = test_id
             result_dict['num_episodes'] = len(return_list_vae)
             result_dict['return_list_vae'] = return_list_vae
             result_dict['return_list_pi'] = return_list_pi
             result_dict['return_list_bandit'] = return_list_bandit
             result_dict['settings'] = settings
             
-            pickle.dump(result_dict, open('results/PPO_adv_test_'+test_id+'.p', "wb"))
+            pickle.dump(result_dict, open('results/adaptive_'+test_id+'.p', "wb"))
             print('recent average reward of GSCU-Greedy', float(sum(return_list_vae[-100:])/100))
             print('recent average reward of pi_1^*', float(sum(return_list_pi[-100:])/100))
             print('recent average reward of GSCU', float(sum(return_list_bandit[-100:])/100))
@@ -249,11 +245,16 @@ def main(args):
                 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('-l1', '--lr1', default=1e-4, help='Actor learning rate')
-    parser.add_argument('-l2', '--lr2', default=1e-4, help='Critic learning rate')
     parser.add_argument('-s', '--scenario', default='simple_tag_partial.py', help='Path of the scenario Python script')
     parser.add_argument('-st', '--steps', default=50, help='Num of steps in a single run')
     parser.add_argument('-ep', '--num_episodes', default=1500, help='Num of episodes')
+    
+    parser.add_argument('-v', '--version', default='v0', help='version')
+    parser.add_argument('-seed', '--seed', default=0, help='seed')
+    parser.add_argument('-a', '--adv_file', default='../model_params/opponent/params_opp_init_2.pt', help='opponent file')
+    parser.add_argument('-e', '--encoder_file', default='../model_params/VAE/encoder_vae_param_demo.pt', help='vae encoder file')
+    parser.add_argument('-d', '--decoder_file', default='../model_params/VAE/decoder_param_demo.pt', help='vae decoder file')
+    parser.add_argument('-r', '--rl_file', default='../model_params/RL/params_demo.pt', help='conditional RL file')
     args = parser.parse_args()
 
     main(args)

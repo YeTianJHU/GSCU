@@ -2,19 +2,18 @@ import os,sys
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import argparse
 import numpy as np
-from collections import namedtuple
 import pickle
 import torch
 
 from multiagent.environment import MultiAgentEnv
 from multiagent.mypolicy import *
 import multiagent.scenarios as scenarios
-from VAE.opponent_models import OpponentModel
-from VAE.data_generation import get_all_adv_policies
-from VAE.bayesian_update import BayesianUpdater, VariationalInference, EXP3
+from embedding_learning.opponent_models import OpponentModel
+from embedding_learning.data_generation import get_all_adv_policies
+from online_test.bayesian_update import BayesianUpdater, VariationalInference, EXP3
 
-from conditional_RL.GSCU_Greedy import PPO_VAE
-from online_test.multiple_test import *
+from conditional_RL.conditional_rl_model import PPO_VAE
+from utils.multiple_test import *
 
 N_ADV = 3
 seen_adv_pool = ['PolicyN', 'PolicyEA', 'PolicyW', 'PolicyA']
@@ -30,31 +29,30 @@ def get_three_adv_all_policies(env, adv_pool, adv_path):
     return all_policies
 
 def main(args):
-    dataloader = open('policy_vec_sequence_4.p', 'rb')
+    gamma = 0.99
+    hidden_dim = 128
+    seed = args.seed
+    actor_lr = 1e-4
+    critic_lr = 1e-4
+    num_episodes = args.num_episodes
+    adv_change_freq = 200
+    adv_pool_type = args.opp_type
+    if adv_pool_type == 'mix':
+        dataloader = open('../data/online_test_policy_vec_seq_8.p', 'rb')
+    elif adv_pool_type == 'seen' or adv_pool_type == 'unseen':
+        dataloader = open('../data/online_test_policy_vec_seq_4.p', 'rb')
+    else:
+        print('Please choose seen/unseen/mix')
     data = pickle.load(dataloader)
     policy_vec_seq = data['policy_vec_seq']
 
-    gamma = 0.99
-    hidden_dim = 128
-    seed = 1
-    actor_lr = args.lr1
-    critic_lr = args.lr2
-    num_episodes = args.num_episodes
-    adv_change_freq = 200
-    adv_pool_type = 'seen' # option: 'seen', 'unseen', 'mix'
-
-    ckp_num = 10000
     ckp_freq = 20
-    exp_num = 4
-    test_num = 14
-    test_id = 'v' + str(exp_num) + '_' + adv_pool_type + '_' + str(test_num)
-    print(test_id)
+    test_id = args.version
 
     scenario = scenarios.load(args.scenario).Scenario()
     world_vae = scenario.make_world()
     world_bandit = scenario.make_world()
     
-
     env_vae = MultiAgentEnv(world_vae, scenario.reset_world, scenario.reward, scenario.observation,
                             info_callback=None, shared_viewer=False, discrete_action=True)
     env_bandit = MultiAgentEnv(world_bandit, scenario.reset_world, scenario.reward, scenario.observation,
@@ -65,15 +63,12 @@ def main(args):
     state_dim = env_vae.observation_space[3].shape[0]
     action_dim = env_vae.action_space[3].n
     embedding_dim = 2
-    encoder_weight_path = '../VAE/saved_model_params/encoder_vae_param.pt'
-    decoder_weight_path = '../VAE/saved_model_params/decoder_param.pt'
+    encoder_weight_path = args.encoder_file
+    decoder_weight_path = args.decoder_file
 
-    
     agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, actor_lr, critic_lr, encoder_weight_path, gamma, 4)
     agent_bandit_pi = ConservativePolicy(env_bandit, env_bandit.n-1, epsilon=0.2)
-    
-
-    ppo_vae_path = '../conditional_RL/trained_parameters/GSCU_Greedy/params_' + 'v57' + '_' + str(ckp_num) + '.0.pt'
+    ppo_vae_path = args.rl_file
     agent_vae.init_from_save(ppo_vae_path)
 
     return_list_vae = []
@@ -100,9 +95,7 @@ def main(args):
     exp3 = EXP3(n_action=2, gamma=0.2, min_reward=-200, max_reward=20)
 
     use_exp3 = True
-    
-    cur_adv_idx = 10 * exp_num + 200
-    # cur_adv_idx = 0
+    cur_adv_idx = 200
 
     for i_episode in range(num_episodes):
         if i_episode % adv_change_freq == 0:
@@ -171,9 +164,9 @@ def main(args):
         if i_episode % ckp_freq == 0:
             print('current episode', i_episode)
             play_episodes = 100
-            return_list_vae = return_list_vae + play_multiple_times_without_update_simple(env_vae, agent_vae, policies_vae[0], policies_vae[1], policies_vae[2], 'vae', 'rule', play_episodes=play_episodes, latent=cur_latent)
+            return_list_vae = return_list_vae + play_multiple_times_test(env_vae, agent_vae, policies_vae[0], policies_vae[1], policies_vae[2], 'vae', 'rule', play_episodes=play_episodes, latent=cur_latent)
             print('avg reward of vae:', sum(return_list_vae[-100:])/100)
-            return_list_bandit = return_list_bandit + play_multiple_times_without_update_bandit(env_bandit, agent_bandit_pi, agent_vae, policies_bandit[0], policies_bandit[1], policies_bandit[2], 'rule', play_episodes=play_episodes, latent=cur_latent_bandit, p=exp3.get_p()[0], use_exp3=use_exp3)
+            return_list_bandit = return_list_bandit + play_multiple_times_test_bandit(env_bandit, agent_bandit_pi, agent_vae, policies_bandit[0], policies_bandit[1], policies_bandit[2], 'rule', play_episodes=play_episodes, latent=cur_latent_bandit, p=exp3.get_p()[0], use_exp3=use_exp3)
             print('avg reward of bandit', sum(return_list_bandit[-100:])/100)
             
             vi_emb = vi.generate_cur_embedding(is_np=True)
@@ -208,11 +201,18 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=None)
-    parser.add_argument('-l1', '--lr1', default=1e-4, help='Actor learning rate')
-    parser.add_argument('-l2', '--lr2', default=1e-4, help='Critic learning rate')
     parser.add_argument('-s', '--scenario', default='simple_tag_partial.py', help='Path of the scenario Python script')
     parser.add_argument('-st', '--steps', default=50, help='Num of steps in a single run')
     parser.add_argument('-ep', '--num_episodes', default=1000, help='Num of episodes')
+
+    parser.add_argument('-v', '--version', default='v0', help='version')
+    parser.add_argument('-seed', '--seed', default=0, help='seed')
+    parser.add_argument('-o', '--opp_type', default='seen', 
+                        choices=["seen", "unseen", "mix"], help='type of the opponents')
+    parser.add_argument('-e', '--encoder_file', default='../model_params/VAE/encoder_vae_param_demo.pt', help='vae encoder file')
+    parser.add_argument('-d', '--decoder_file', default='../model_params/VAE/decoder_param_demo.pt', help='vae decoder file')
+    parser.add_argument('-r', '--rl_file', default='../model_params/RL/params_demo.pt', help='conditional RL file')
     args = parser.parse_args()
+    
 
     main(args)
