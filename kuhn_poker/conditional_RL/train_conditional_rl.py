@@ -13,7 +13,7 @@ import pickle
 import random
 import pyspiel
 from embedding_learning.opponent_models import *
-from conditioned_RL.conditional_rl_model import PPO_VAE
+from conditional_RL.conditional_rl_model import PPO_VAE
 from utils.config_kuhn_poker import Config
 from utils.mypolicy import PolicyKuhn,get_policy_by_vector,BestResponseKuhn
 from utils.utils import sample_fixed_vector,get_onehot
@@ -48,7 +48,7 @@ def evaluate_training_model(n_test, player, agent_vae, config, n_adv_pool,device
             else:
                 s = state.information_state_tensor(cur_player)
                 if cur_player == player:
-                    act_vae, action, act_prob_vae = agent_vae.select_action(s, latent)
+                    act_vae, action, act_prob_vae = agent_vae.select_action(s, mu)
                 else:
                     action = opponent_policy.action(s)
                 state.apply_action(action)
@@ -74,25 +74,18 @@ def main(args):
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    gamma = 0.98
+    gamma = 0.99
     actor_lr = 5e-4 
     critic_lr = 5e-4
-    num_episodes = 200000 
+    num_episodes = 300000 
     checkpoint_freq = num_episodes//10
-    n_test = 5000
-    evaluate_freq = num_episodes//20
+    n_test = 10000
+    evaluate_freq = num_episodes//30
 
-    use_latent = True  # ture if using embedding/mean, else using onehot adv ids
-    use_mean = False # true if using mean from encoder, instade of the embedding
-    is_controls = False
-    batch_size = 1024
+    batch_size = 1000
     ppo_update_time = 5
     this_player = 0 # controling player 0
-
-    if not use_latent:
-        use_mean = False
-    if is_controls:
-        use_latent = True
+    is_sample_emb_in_eisode = False
 
     state_dim = Config.OBS_DIM
     action_dim = Config.ACTION_DIM
@@ -124,16 +117,10 @@ def main(args):
             vae_vector = get_onehot(n_adv_pool,rand_int)
             opponent_policy = get_policy_by_vector(policy_vec,is_best_response=False)
 
-            if is_controls: # emb w/ no meaning
-                latent = torch.tensor(np.array([np.zeros(embedding_dim)])).float().to(device)
-            elif use_latent: # using emb
+            if not is_sample_emb_in_eisode:
                 policy_vec_tensor = torch.tensor(np.array([vae_vector])).float().to(device)
                 latent,mu,_ = agent_VAE.encoder(policy_vec_tensor)
-                if use_mean: # using mean
-                    latent = mu
-            else: # using policy_vec
-                latent = torch.tensor(np.array([policy_vec[3:]])).float().to(device)
-            latent_np = latent[0].cpu().detach().numpy()
+                latent_np = latent[0].cpu().detach().numpy()
 
             state = game.new_initial_state()
             obs_list = []
@@ -141,6 +128,12 @@ def main(args):
             act_prob_list = []
             dron_feature_list = []
             while not state.is_terminal():
+
+                if is_sample_emb_in_eisode:
+                    policy_vec_tensor = torch.tensor(np.array([vae_vector])).float().to(device)
+                    latent,mu,_ = agent_VAE.encoder(policy_vec_tensor)
+                    latent_np = latent[0].cpu().detach().numpy()
+
                 legal_actions = state.legal_actions()
                 cur_player = state.current_player()
                 if state.is_chance_node():

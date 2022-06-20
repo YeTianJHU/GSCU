@@ -17,8 +17,8 @@ import glob
 from embedding_learning.opponent_models import *
 from online_test.bayesian_update import VariationalInference,EXP3
 from online_adaption import evaluate_exp3,evaluate_vae,evaluate_baseline
-from conditioned_RL.conditioned_rl_model import PPO_VAE
-from conditioned_RL.ppo_model import PPO
+from conditional_RL.conditional_rl_model import PPO_VAE
+from conditional_RL.ppo_model import PPO
 from utils.config_kuhn_poker import Config
 from utils.mypolicy import PolicyKuhn,get_policy_by_vector
 
@@ -76,10 +76,12 @@ def main(args):
     hidden_dim = Config.HIDDEN_DIM
 
     # opponent lr
-    actor_lr = 5e-4 
-    critic_lr = 5e-4 
+    actor_lr = 5e-5 
+    critic_lr = 5e-5
+    # opponent batch size
+    batch_size = 100 
     # discount factor for opponent learning
-    gamma = 0.98
+    gamma = 0.99
 
     n_steps = 10 # vi update freq
     this_player = 0 # controling player 0
@@ -101,15 +103,18 @@ def main(args):
     opponent_model = OpponentModel(state_dim, n_adv_pool, hidden_dim, embedding_dim, action_dim, encoder_weight_path, decoder_weight_path)
     vi = VariationalInference(opponent_model, latent_dim=embedding_dim, n_update_times=10, game_steps=n_steps)
     exp3 = EXP3(n_action=2, gamma=0.3, min_reward=-4, max_reward=4)
-    agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, None, None, encoder_weight_path, n_adv_pool)
+    agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, 0.00, 0.00, encoder_weight_path, n_adv_pool)
     agent_vae.init_from_save(conditional_rl_weight_path)
 
     opponent_p1_exp3 = PPO(state_dim, hidden_dim, action_dim, actor_lr, critic_lr)
     opponent_p1_exp3.init_from_save(opponent_p1_weight_path)
+    opponent_p1_exp3.batch_size = batch_size
     opponent_p1_vae = PPO(state_dim, hidden_dim, action_dim, actor_lr, critic_lr)
     opponent_p1_vae.init_from_save(opponent_p1_weight_path)
+    opponent_p1_vae.batch_size = batch_size
     opponent_p1_ne = PPO(state_dim, hidden_dim, action_dim, actor_lr, critic_lr)
     opponent_p1_ne.init_from_save(opponent_p1_weight_path)
+    opponent_p1_ne.batch_size = batch_size
 
     rst_dir = Config.ONLINE_TEST_RST_DIR
 
@@ -190,7 +195,7 @@ def main(args):
         train_opponent(game,opponent_p1_vae,agent_vae,'rl',Transition_p1,latent=emb_tensor)
         train_opponent(game,opponent_p1_ne,ne_response,'rule_based',Transition_p1)
 
-        if j%(n_steps*15) == 0 and j > 0:
+        if j%(n_steps*10) == 0 and j > 0:
             emb = vi.generate_cur_embedding(is_np=True)
             emb_tensor = vi.generate_cur_embedding(is_np=False)
             ce = vi.get_cur_ce()

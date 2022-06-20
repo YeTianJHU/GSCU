@@ -16,7 +16,7 @@ import pandas as pd
 import glob 
 from embedding_learning.opponent_models import *
 from online_test.bayesian_update import VariationalInference,EXP3
-from conditioned_RL.conditioned_rl_model import PPO_VAE
+from conditional_RL.conditional_rl_model import PPO_VAE
 from utils.config_kuhn_poker import Config
 from utils.mypolicy import PolicyKuhn,get_policy_by_vector,BestResponseKuhn
 from utils.utils import get_p1_region,get_onehot,kl_by_mean_sigma,mse
@@ -162,7 +162,7 @@ def main(args):
     opponent_model = OpponentModel(state_dim, n_adv_pool, hidden_dim, embedding_dim, action_dim, encoder_weight_path, decoder_weight_path)
     vi = VariationalInference(opponent_model, latent_dim=embedding_dim, n_update_times=50, game_steps=n_steps)
     exp3 = EXP3(n_action=2, gamma=0.3, min_reward=-2, max_reward=2) # lr of exp3 is set to 0.3
-    agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, None, None, encoder_weight_path, n_adv_pool)
+    agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, 0.0, 0.0, encoder_weight_path, n_adv_pool)
     agent_vae.init_from_save(conditional_rl_weight_path)
 
     rst_dir = Config.ONLINE_TEST_RST_DIR
