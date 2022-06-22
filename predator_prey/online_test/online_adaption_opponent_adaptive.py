@@ -257,7 +257,7 @@ def main(args):
             result_dict['return_bandit_list'] = return_bandit_list
             result_dict['settings'] = settings
             
-            pickle.dump(result_dict, open(rst_dir+'/adaptive_'+test_id+'.p', "wb"))
+            pickle.dump(result_dict, open(rst_dir+'/adaptive_'+test_id+'_opp'+args.opp_init_id+'.p', "wb"))
 
             logging.info("episode: {}, opp init id: {}, gscu: {:.2f}, | greedy: {:.2f}, | pi: {:.2f}".format(
                         i_episode,args.opp_init_id,np.mean(ckp_eturn_list_bandit),np.mean(ckp_return_vae_list),np.mean(ckp_return_pi_list)))
@@ -282,7 +282,12 @@ def main(args):
 
         if use_exp3:
             exp3.update(episode_return_bandit, agent_selected)
-        
+
+    print ('avg gscu', np.mean(return_bandit_list), 
+            '| avg greedy', np.mean(return_vae_list), 
+            '| avg pi', np.mean(return_pi_list))
+    print ('version',test_id)
+    print ('seed',seed)
                 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=None)

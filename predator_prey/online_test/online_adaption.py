@@ -75,7 +75,10 @@ def main(args):
     env_pi.seed(seed)
     env_vae.seed(seed)
     env_bandit.seed(seed)
-
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    
     state_dim = env_vae.observation_space[3].shape[0]
     action_dim = env_vae.action_space[3].n
     embedding_dim = Config.LATENT_DIM
@@ -111,7 +114,7 @@ def main(args):
     exp3 = EXP3(n_action=2, gamma=0.2, min_reward=-200, max_reward=20)
 
     use_exp3 = True
-    cur_adv_idx = 300 # just a random number to indetify the sequence start opponent. can be any number between 0 to 800
+    cur_adv_idx = 300 # just a random number to indetify the sequence start point. can be any number between 0 to 800
     cur_n_opponent = 0
 
     return_list_vae = []
@@ -231,18 +234,11 @@ def main(args):
         seq_idx = cur_n_opponent//n_opponent_per_seq
         opp_idx = cur_n_opponent%n_opponent_per_seq
 
-        if i_episode%adv_change_freq == adv_change_freq and i_episode>0:
+        if (i_episode+1)%adv_change_freq == 0:
             logging.info("seq idx: {}, opp idx: {}, opp name: {}, gscu: {:.2f}, | greedy: {:.2f}, | pi: {:.2f}".format(
                         seq_idx,opp_idx,opp_name,np.mean(return_list_bandit[-adv_change_freq:]),np.mean(return_list_vae[-adv_change_freq:]),np.mean(return_list_pi[-adv_change_freq:])))
 
-
-        # if (i_episode % 500 == 0):
-        #     # print (i_episode, 'cur overall avg', 'greedy',np.mean(return_list_vae),'pi',np.mean(return_list_pi),'GSCU',np.mean(return_list_bandit))
-        #     logging.info("Average overall returns: GSCU_greedy: {0} | Pi: {1} | GSCU {2} at the end of epoch {3}".format(np.mean(return_list_vae),
-        #                 np.mean(return_list_pi), np.mean(return_list_bandit), i_episode))
-
-
-            if cur_n_opponent%n_opponent_per_seq == (n_opponent_per_seq-1):
+            if (cur_n_opponent+1)%n_opponent_per_seq == 0:
                 print ('# seq: ', seq_idx, ', total # of opp: ', cur_n_opponent+1,
                         ', avg gscu', np.mean(return_list_bandit), 
                         '| avg greedy', np.mean(return_list_vae), 
@@ -256,7 +252,7 @@ def main(args):
                 result_dict['greedy'] = return_list_vae
                 result_dict['pi'] = return_list_pi
                 result_dict['gscu'] = return_list_bandit
-                pickle.dump(result_dict, open(rst_dir+'online_adaption_'+test_id+'.p', "wb"))
+                pickle.dump(result_dict, open(rst_dir+'online_adaption_'+test_id+'_'+adv_pool_type+'.p', "wb"))
 
 
         act_adv = np.array(act_adv)
@@ -274,7 +270,7 @@ def main(args):
         if use_exp3:
             exp3.update(episode_return_bandit, agent_selected)
         
-        if i_episode % adv_change_freq == 0:
+        if i_episode % adv_change_freq == 0 and i_episode>0:
             cur_adv_idx += 1
             cur_n_opponent += 1
 
