@@ -291,16 +291,16 @@ def main(args):
                     '| avg ne', np.mean(global_return_ne_list))
             print ('-'*10)
 
-        result = {
-            'opponent_type':opponent_type,
-            'gscu': global_return_exp3_list,
-            'greedy': global_return_vae_list,
-            'ne': global_return_ne_list,
-            'n_opponent':n+1,
-            'policy_vec_list':policy_vec_list,
-            'opponent_list':opponent_list}
+            result = {
+                'opponent_type':opponent_type,
+                'gscu': global_return_exp3_list,
+                'greedy': global_return_vae_list,
+                'ne': global_return_ne_list,
+                'n_opponent':n+1,
+                'policy_vec_list':policy_vec_list,
+                'opponent_list':opponent_list}
 
-        pickle.dump(result, open(rst_dir+'online_adaption_'+version+'.p', "wb"))
+            pickle.dump(result, open(rst_dir+'online_adaption_'+version+'_'+opponent_type+'.p', "wb"))
 
     print ('version',version)
     print ('opponent_type',opponent_type)

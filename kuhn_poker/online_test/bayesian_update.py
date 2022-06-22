@@ -13,7 +13,7 @@ kl_loss = KLDivLoss(reduction='batchmean')
 ce_loss = CrossEntropyLoss(reduction='sum')
 
 class VariationalInference():
-    def __init__(self, opponent_model, latent_dim=2, n_update_times=20, game_steps=50):
+    def __init__(self, opponent_model, latent_dim=2, n_update_times=10, game_steps=50):
         self.latent_dim = latent_dim
         self.n_update_times = n_update_times
         self.game_steps = game_steps

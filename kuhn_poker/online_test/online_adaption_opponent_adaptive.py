@@ -86,7 +86,7 @@ def main(args):
     n_steps = 10 # vi update freq
     this_player = 0 # controling player 0
     n_episode = 1000*5 
-    n_test = 8000 # number of evaluation epsideos. More than 1000 episodes are recommanded.  
+    n_test = 10000 # number of evaluation epsideos. More than 1000 episodes are recommanded.  
 
     version = args.version 
 
@@ -101,8 +101,8 @@ def main(args):
     opponent_p1_weight_path = Config.OPPONENT_MODEL_DIR + 'params_opp_init_' + args.opp_init_id + '.pt'
 
     opponent_model = OpponentModel(state_dim, n_adv_pool, hidden_dim, embedding_dim, action_dim, encoder_weight_path, decoder_weight_path)
-    vi = VariationalInference(opponent_model, latent_dim=embedding_dim, n_update_times=10, game_steps=n_steps)
-    exp3 = EXP3(n_action=2, gamma=0.3, min_reward=-4, max_reward=4)
+    vi = VariationalInference(opponent_model, latent_dim=embedding_dim, game_steps=n_steps)
+    exp3 = EXP3(n_action=2, gamma=0.2, min_reward=-4, max_reward=4)
     agent_vae = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, 0.00, 0.00, encoder_weight_path, n_adv_pool)
     agent_vae.init_from_save(conditional_rl_weight_path)
 
@@ -124,10 +124,6 @@ def main(args):
     game = pyspiel.load_game("kuhn_poker(players=2)")
 
     state = game.new_initial_state()
-
-    global_return_vae_list = []
-    global_return_ne_list = []
-    global_return_exp3_list = []
 
     obs_list = []
     act_index_list = []
@@ -195,7 +191,7 @@ def main(args):
         train_opponent(game,opponent_p1_vae,agent_vae,'rl',Transition_p1,latent=emb_tensor)
         train_opponent(game,opponent_p1_ne,ne_response,'rule_based',Transition_p1)
 
-        if j%(n_steps*10) == 0 and j > 0:
+        if j%(n_steps*50) == 0 and j > 0:
             emb = vi.generate_cur_embedding(is_np=True)
             emb_tensor = vi.generate_cur_embedding(is_np=False)
             ce = vi.get_cur_ce()
@@ -212,20 +208,17 @@ def main(args):
             return_ne_list.append(avg_return_ne)
             return_exp3_list.append(avg_return_exp3)
 
-            global_return_vae_list.append(avg_return_vae)
-            global_return_ne_list.append(avg_return_ne)
-            global_return_exp3_list.append(avg_return_exp3)
 
     print ('avg gscu', np.mean(return_exp3_list), 
             '| avg greedy', np.mean(return_vae_list), 
             '| avg ne', np.mean(return_ne_list))
 
     result = {
-        'gscu': global_return_exp3_list,
-        'greedy': global_return_vae_list,
-        'ne': global_return_ne_list}
+        'gscu': return_exp3_list,
+        'greedy': return_vae_list,
+        'ne': return_ne_list}
 
-    pickle.dump(result, open(rst_dir+'online_adaption_opp_adaptive_'+version+'.p', "wb"))
+    pickle.dump(result, open(rst_dir+'online_adaption_opp_adaptive_'+version+'_'+args.opp_init_id+'.p', "wb"))
 
     print ('version',version)
     print ('seed',seed)
