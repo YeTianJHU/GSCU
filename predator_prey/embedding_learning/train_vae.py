@@ -1,25 +1,24 @@
+import os, sys
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 import numpy as np
 import torch
 import pickle
+import logging
+import argparse
 import pandas as pd 
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 from torch.nn import BCEWithLogitsLoss,NLLLoss,CrossEntropyLoss
 import torch.nn.functional as F
-
-import os, sys
-sys.path.insert(1, os.path.join(sys.path[0], '..'))
-
 from embedding_learning.dataset import OpponentVAEDataset
 from embedding_learning.opponent_models import Encoder,EncoderVAE,Decoder
-import logging
-import argparse
+from utils.config_predator_prey import Config
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
 
-adv_pool = ['PolicyN', 'PolicyEA', 'PolicyW', 'PolicyA']
+adv_pool = Config.ADV_POOL_SEEN
 
 def kl_divergence(mu, logvar):
     dimension_wise_kld, mean_kld = None, None
@@ -36,24 +35,24 @@ def get_annealing_schedule(n_repeat, max_bata, n_total_it):
     return all_beta
 
 def main(version):
-    train_data_file = '../data/vae_data_simple_tag_' + version + '.p'
-    test_data_file = '../data/vae_data_simple_tag_' + version + '.p'
+
+    data_dir = Config.DATA_DIR
+    model_dir = Config.VAE_MODEL_DIR
+
+    train_data_file = data_dir + 'vae_data_simple_tag_' + version + '.p'
+    test_data_file = data_dir + 'vae_data_simple_tag_' + version + '_test.p'
     batch_size = 1024
-    gpuid = [-1]
+    gpuid = [-1] 
     epochs = 30
     learning_rate = 0.001
-    beta = 0.05
     n_repeat = 2
     max_bata = 0.1
     obs_dim = 16
-    num_adv_pool = 4
+    num_adv_pool = len(adv_pool)
     action_dim = 7
-    hidden_dim = 128
-    latent_dim = 2
+    hidden_dim = Config.HIDDEN_DIM
+    latent_dim = Config.LATENT_DIM
     is_vae = True
-    is_save_output = False
-    is_block_vae = False
-    is_disc_head = False
 
     train_dset = OpponentVAEDataset(train_data_file)
     train_data_loader = DataLoader(train_dset,
@@ -74,10 +73,7 @@ def main(version):
     else:
         encoder = Encoder(num_adv_pool, hidden_dim, latent_dim)
 
-    if is_disc_head:
-        decoder = Decoder(obs_dim, hidden_dim, latent_dim, action_dim, output_dim2=num_adv_pool)
-    else:
-        decoder = Decoder(obs_dim, hidden_dim, latent_dim, action_dim, output_dim2=None)
+    decoder = Decoder(obs_dim, hidden_dim, latent_dim, action_dim, output_dim2=None)
 
     if use_cuda > 0:
         encoder.cuda()
@@ -87,11 +83,6 @@ def main(version):
     disc_loss = CrossEntropyLoss()
     parameters = list(encoder.parameters()) + list(decoder.parameters())
     optimizer = torch.optim.Adam(parameters, lr=learning_rate)
-
-    train_loss_list = []
-    train_acc_list = []
-    test_loss_list = []
-    test_acc_list = []
 
     for epoch_i in range(0, epochs):
         logging.info("At {0}-th epoch.".format(epoch_i))
@@ -110,8 +101,6 @@ def main(version):
                 data_s,data_a,data_i = Variable(data_s),Variable(data_a),Variable(data_i)
 
             data_i_onehot = F.one_hot(data_i, num_classes=num_adv_pool)
-            if is_block_vae:
-                data_i_onehot = torch.ones(data_i_onehot.size()).cuda()
 
             if is_vae:
                 embedding,mu,logvar = encoder(data_i_onehot.float())
@@ -126,26 +115,16 @@ def main(version):
             else:
                 embedding = encoder(data_i_onehot.float())
 
-            if is_disc_head:
-                probs, pred_adv_id = decoder(data_s, embedding)
-            else:
-                probs = decoder(data_s, embedding)
+            probs = decoder(data_s, embedding)
 
             im_loss = recon_loss(probs,data_a)
 
-            if type(beta) is list:
-                beta_val = beta[epoch_i*int(len(train_dset)/batch_size)+it]
-            else:
-                beta_val = beta
+            beta_val = beta[epoch_i*int(len(train_dset)/batch_size)+it]
 
             if is_vae:
                 loss = im_loss + beta_val*kl_loss
-                if it%((len(train_dset)/batch_size)//2) == 0:
-                    print ('im_loss',im_loss, 'kl_loss',kl_loss, 'mu',batch_bas_mean_mu, 'var', batch_bas_mean_var, 'beta', beta_val)
             else:
                 loss = im_loss
-                if it%((len(train_dset)/batch_size)//2) == 0:
-                    print ('im_loss',im_loss)
 
             train_loss += loss.data
             optimizer.zero_grad()
@@ -159,8 +138,6 @@ def main(version):
         train_avg_loss = train_avg_loss.cpu().detach().numpy()
         training_accuracy = (correct.detach().numpy() / len(train_dset))
         logging.info("Average training loss value per instance is {0}, acc is {1} at the end of epoch {2}".format(train_avg_loss, training_accuracy, epoch_i))
-        train_loss_list.append(train_avg_loss)
-        train_acc_list.append(training_accuracy)
 
         ################################################
         # testing
@@ -176,10 +153,7 @@ def main(version):
                 data_s,data_a,data_i = Variable(data_s).cuda(),Variable(data_a).cuda(),Variable(data_i).cuda()
             else:
                 data_s,data_a,data_i = Variable(data_s),Variable(data_a),Variable(data_i)
-
             data_i_onehot = F.one_hot(data_i, num_classes=num_adv_pool)
-            if is_block_vae:
-                data_i_onehot = torch.ones(data_i_onehot.size()).cuda()
 
             if is_vae:
                 embedding,mu,logvar = encoder(data_i_onehot.float())
@@ -191,10 +165,7 @@ def main(version):
             probs = decoder(data_s, mu)
             im_loss = recon_loss(probs,data_a)
 
-            if type(beta) is list:
-                beta_val = beta[epoch_i*int(len(train_dset)/batch_size)+it]
-            else:
-                beta_val = beta
+            beta_val = beta[epoch_i*int(len(train_dset)/batch_size)+it]
 
             if is_vae:
                 loss = im_loss + beta_val*kl_loss
@@ -204,46 +175,19 @@ def main(version):
             pred = probs.data.max(1, keepdim=True)[1] 
             correct += pred.eq(data_a.data.view_as(pred)).cpu().sum()
 
-            pred_np = pred.cpu().detach().numpy()
-            gt_np = data_a.cpu().detach().numpy()
-            policy_idx = data_i.cpu().detach().numpy()
-
-            pred_np = np.reshape(pred_np, (-1,))
-            if it == 0:
-                pred_all = pred_np
-                gt_all = gt_np
-                p_id_all = policy_idx
-            
-
         test_avg_loss = test_loss / (len(test_dset) / batch_size)
         test_avg_loss = test_avg_loss.cpu().detach().numpy()
         test_accuracy = (correct.detach().numpy() / len(test_dset))
         logging.info("Average testing loss value per instance is {0}, acc is {1} at the end of epoch {2}".format(test_avg_loss, test_accuracy, epoch_i))
-        
-        test_loss_list.append(test_avg_loss)
-        test_acc_list.append(test_accuracy)
+    
 
     if is_vae:
-        torch.save(encoder.state_dict(), '../model_params/VAE/encoder_vae_param_'+version+'_'+str(epoch_i)+'.pt')
+        torch.save(encoder.state_dict(), model_dir+'encoder_vae_param_'+version+'_'+str(epoch_i)+'.pt')
     else:
-        torch.save(encoder.state_dict(), '../model_params/VAE/encoder_ae_param_'+version+'_'+str(epoch_i)+'.pt')
-    torch.save(decoder.state_dict(),  '../model_params/VAE/decoder_param_'+version+'_'+str(epoch_i)+'.pt')
+        torch.save(encoder.state_dict(), model_dir+'encoder_ae_param_'+version+'_'+str(epoch_i)+'.pt')
+    torch.save(decoder.state_dict(),  model_dir+'decoder_param_'+version+'_'+str(epoch_i)+'.pt')
 
 
-    if is_save_output:
-        output = {
-            'pred_all': pred_all,
-            'gt_all': gt_all,
-            'p_id_all': p_id_all}
-        pickle.dump(output, open('results/output'+version+'.p', "wb"))
-
-    result = {
-        'train_loss_list': train_loss_list,
-        'train_acc_list': train_acc_list,
-        'test_loss_list': test_loss_list,
-        'test_acc_list': test_acc_list}
-
-    pickle.dump(result, open('../data/exp'+version+'.p', "wb"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=None)
