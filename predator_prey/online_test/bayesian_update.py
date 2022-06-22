@@ -220,7 +220,8 @@ class VariationalInference():
     def update_prior(self):
         self.prev_mu = self.mu.clone().detach()
         self.prev_std = self.logvar.div(2).exp().clone().detach()
-        self.prev_std = torch.clamp(self.prev_std, min=0.45)
+        self.prev_std = torch.clamp(self.prev_std, min=0.5)
+        self.prev_mu = torch.clamp(self.prev_mu, min=-2, max=2)
 
 
     def reparametrize(self, mu, logvar):

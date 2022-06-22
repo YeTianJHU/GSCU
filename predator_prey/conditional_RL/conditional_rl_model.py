@@ -12,29 +12,36 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class PolicyNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, latent_dim, action_dim):
         super(PolicyNet, self).__init__()
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
+        self.lstm = torch.nn.LSTM(state_dim, hidden_dim, batch_first=True)
+        self.fc1 = torch.nn.Linear(hidden_dim, hidden_dim)
         self.fc2 = torch.nn.Linear(hidden_dim, hidden_dim)
         self.fc3 = torch.nn.Linear(hidden_dim + latent_dim, hidden_dim)
         self.fc4 = torch.nn.Linear(hidden_dim, action_dim)
             
-    def forward(self, x, latent):
-        x = F.relu(self.fc1(x))
+    def forward(self, obs, action, hidden, latent):
+        x = torch.cat((obs, action), dim=-1)
+        h, hidden = self.lstm(x, hidden)
+        h = h[:,-1,:]
+        x = F.relu(self.fc1(h))
         x = F.relu(self.fc2(x))
         x = torch.cat((x, latent), -1)
         x = F.relu(self.fc3(x))
-
         return F.softmax(self.fc4(x), dim=1)
 
 class ValueNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, latent_dim):
         super(ValueNet, self).__init__()
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim)
+        self.lstm = torch.nn.LSTM(state_dim, hidden_dim, batch_first=True)
+        self.fc1 = torch.nn.Linear(hidden_dim, hidden_dim)
         self.fc2 = torch.nn.Linear(hidden_dim, hidden_dim)
         self.fc3 = torch.nn.Linear(hidden_dim + latent_dim, hidden_dim)
         self.fc4 = torch.nn.Linear(hidden_dim, 1)
     
-    def forward(self, x, latent):
-        x = F.relu(self.fc1(x))
+    def forward(self, obs, action, hidden, latent):
+        x = torch.cat((obs, action), dim=-1)
+        h, hidden = self.lstm(x, hidden)
+        h = h[:,-1,:]
+        x = F.relu(self.fc1(h))
         x = F.relu(self.fc2(x))
         x = torch.cat((x, latent), -1)
         x = F.relu(self.fc3(x))
@@ -50,14 +57,15 @@ class PPO_VAE():
 
     def __init__(self, state_dim, hidden_dim, embedding_dim, action_dim, actor_lr, critic_lr, encoder_weight_path, gamma, n_adv_pool=4):
         super(PPO_VAE, self).__init__()
-        self.actor_net = PolicyNet(state_dim, hidden_dim, embedding_dim, action_dim).to(device)
-        self.critic_net = ValueNet(state_dim, hidden_dim, embedding_dim).to(device)
+
+        self.hidden_dim = hidden_dim 
+        self.actor_net = PolicyNet(state_dim, self.hidden_dim, embedding_dim, action_dim).to(device)
+        self.critic_net = ValueNet(state_dim, self.hidden_dim, embedding_dim).to(device)
 
         # EncoderVAE
         self.encoder = EncoderVAE(n_adv_pool, hidden_dim, embedding_dim).to(device)
-        if embedding_dim == 2 or embedding_dim == 8:
-            print("encoder weight loaded")
-            self.encoder.load_state_dict(torch.load(encoder_weight_path))
+        print("encoder weight loaded")
+        self.encoder.load_state_dict(torch.load(encoder_weight_path))
 
         self.buffer = []
         self.counter = 0
@@ -68,21 +76,14 @@ class PPO_VAE():
         self.gamma = gamma
 
             
-    def select_action(self, state, latent, dim_c):
-        state = torch.from_numpy(state).float().unsqueeze(0).to(device)
+    def select_action(self, obs, act, hidden, latent, dim_c):
         with torch.no_grad():
-            action_prob = self.actor_net(state, latent)
+            action_prob = self.actor_net(obs, act, hidden, latent)
         c = Categorical(action_prob)
         action = c.sample()
         u = np.zeros(5)
         u[action.item()] += 1
         return np.concatenate([u, np.zeros(dim_c)]), action.item(), action_prob[:,action.item()].item()
-    
-    def get_value(self, state, latent):
-        state = torch.from_numpy(state).to(device)
-        with torch.no_grad():
-            value = self.critic_net(state, latent)
-        return value.item()
 
     def get_params(self):
         return {'actor': self.actor_net.state_dict(), 'critic': self.critic_net.state_dict()}
@@ -112,6 +113,9 @@ class PPO_VAE():
         action = torch.tensor([t.action for t in self.buffer], dtype=torch.long).view(-1,1).to(device)
         latent = torch.tensor([t.latent for t in self.buffer], dtype=torch.float).to(device)
 
+        obs_traj = torch.tensor([t.obs_traj for t in self.buffer], dtype=torch.float).to(device)
+        act_traj = torch.tensor([t.act_traj for t in self.buffer], dtype=torch.float).to(device)
+
         reward = [t.reward for t in self.buffer]
         old_action_log_prob = torch.tensor([t.a_log_prob for t in self.buffer], dtype=torch.float).view(-1,1).to(device)
 
@@ -129,12 +133,15 @@ class PPO_VAE():
         Gt = torch.tensor(Gt, dtype=torch.float).to(device)
         for i in range(self.ppo_update_time):
             for index in BatchSampler(SubsetRandomSampler(range(len(self.buffer))), self.batch_size, False):
+
+                hidden = [torch.zeros((1, len(index), self.hidden_dim)).to(device), torch.zeros((1, len(index), self.hidden_dim)).to(device)]
+
                 Gt_index = Gt[index].view(-1,1)
-                V = self.critic_net(state[index], latent[index])
+                V = self.critic_net(obs_traj[index],  act_traj[index], hidden, latent[index])
                 delta = Gt_index - V
                 advantage = delta.detach()
 
-                action_prob = self.actor_net(state[index], latent[index]).gather(1, action[index]) # new policy
+                action_prob = self.actor_net(obs_traj[index],  act_traj[index], hidden, latent[index]).gather(1, action[index])
 
                 ratio = (action_prob/old_action_log_prob[index])
                 surr1 = ratio * advantage
