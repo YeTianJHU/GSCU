@@ -87,11 +87,6 @@ def main(version):
     parameters = list(encoder.parameters()) + list(decoder.parameters())
     optimizer = torch.optim.Adam(parameters, lr=learning_rate)
 
-    train_loss_list = []
-    train_acc_list = []
-    test_loss_list = []
-    test_acc_list = []
-
     for epoch_i in range(0, epochs):
         logging.info("At {0}-th epoch.".format(epoch_i))
         # training
@@ -146,8 +141,6 @@ def main(version):
         train_avg_loss = train_avg_loss.cpu().detach().numpy()
         training_accuracy = (correct.detach().numpy() / len(train_dset))
         logging.info("Average training loss value per instance is {0}, acc is {1} at the end of epoch {2}".format(train_avg_loss, training_accuracy, epoch_i))
-        train_loss_list.append(train_avg_loss)
-        train_acc_list.append(training_accuracy)
 
 
         ################################################
@@ -200,22 +193,12 @@ def main(version):
         test_accuracy = (correct.detach().numpy() / len(test_dset))
         logging.info("Average testing loss value per instance is {0}, acc is {1} at the end of epoch {2}".format(test_avg_loss, test_accuracy, epoch_i))
 
-        test_loss_list.append(test_avg_loss)
-        test_acc_list.append(test_accuracy)
-
         if is_vae:
             torch.save(encoder.state_dict(), ckp_dir+'/encoder_vae_param_'+version+'_'+str(epoch_i)+'.pt')
         else:
             torch.save(encoder.state_dict(), ckp_dir+'/encoder_ae_param_'+version+'_'+str(epoch_i)+'.pt')
         torch.save(decoder.state_dict(),  ckp_dir+'/decoder_param_'+version+'_'+str(epoch_i)+'.pt')
 
-    # VAE training/testing results
-    result = {
-        'train_loss_list': train_loss_list,
-        'train_acc_list': train_acc_list,
-        'test_loss_list': test_loss_list,
-        'test_acc_list': test_acc_list}
-    pickle.dump(result, open(rst_dir+'exp_'+version+'.p', "wb"))
 
 if __name__ == "__main__":
 
