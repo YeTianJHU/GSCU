@@ -43,7 +43,7 @@ To install the Multi-agent Particle Environment, please follow https://github.co
 ```
 
 ### Running
-The running method for Kuhn Poker and Predator Prey are the same. Here we take Kuhn Poker environment for example:
+The running protocol for Kuhn Poker and Predator Prey are the same. Here we take Kuhn Poker environment for example:
 * To generate the training data for the Policy2Emb
 ```
     cd GSCU/kuhn_poker/embedding_learning
