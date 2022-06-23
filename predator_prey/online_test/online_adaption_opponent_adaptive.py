@@ -296,7 +296,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--scenario', default='simple_tag_partial.py', help='Path of the scenario Python script')
     parser.add_argument('-st', '--steps', default=50, help='Num of steps in a single run')
     parser.add_argument('-v', '--version', default='v0', help='version')
-    parser.add_argument('-seed', '--seed', default=0, help='seed')
+    parser.add_argument('-seed', '--seed', default=1, help='seed')
     parser.add_argument('-oid', '--opp_init_id', default='1', help='opponents initial weight id')    
     parser.add_argument('-e', '--encoder_file', default='encoder_vae_param_demo.pt', help='vae encoder file')
     parser.add_argument('-d', '--decoder_file', default='decoder_param_demo.pt', help='vae decoder file')
