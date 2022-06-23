@@ -12,7 +12,7 @@ Our code is written in python 3.x. The following packages are needed:
 - pickle 
 ```
 
-The environment we use for Kuhn Poker is OpenSpiel, and the environment we use for pretator prey is the Multi-agent Particle Environment. 
+The environment we use for Kuhn Poker is [OpenSpiel](https://github.com/deepmind/open_spiel), and the environment we use for pretator prey is the Multi-agent Particle Environment. 
 To install OpenSpiel 
 ```
     python3 -m pip install open_spiel
@@ -81,3 +81,6 @@ Pre-trained weights for encoder/decoder/RL models are also provided.
    organization={PMLR}
 }
 ```
+
+### Acknowledgements
+For the partially observable setting in Predator Prey environment we refer to [LIAM](https://github.com/uoe-agents/LIAM). 
