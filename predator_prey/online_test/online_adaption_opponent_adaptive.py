@@ -12,7 +12,7 @@ from multiagent.mypolicy import *
 import multiagent.scenarios as scenarios
 from embedding_learning.opponent_models import *
 from embedding_learning.opponent_models import OpponentModel
-from online_test.bayesian_update import BayesianUpdater, VariationalInference, EXP3
+from online_test.bayesian_update import VariationalInference, EXP3
 from conditional_RL.conditional_rl_model import PPO_VAE
 from conditional_RL.ppo_model import PPO
 from utils.multiple_test import *
@@ -40,7 +40,9 @@ def main(args):
     window_size = Config.WINDOW_SIZW
 
     rst_dir = Config.ONLINE_TEST_RST_DIR
-
+    if not os.path.exists(rst_dir):
+        os.makedirs(rst_dir, exist_ok=False) 
+        
     settings = {}
     settings['opp_init_id'] = args.opp_init_id
     settings['params_exp_id'] = test_id
@@ -252,9 +254,9 @@ def main(args):
             result_dict = {}
             result_dict['version'] = test_id
             result_dict['num_episodes'] = i_episode
-            result_dict['return_vae_list'] = return_vae_list
-            result_dict['return_pi_list'] = return_pi_list
-            result_dict['return_bandit_list'] = return_bandit_list
+            result_dict['greedy'] = return_vae_list
+            result_dict['pi'] = return_pi_list
+            result_dict['gscu'] = return_bandit_list
             result_dict['settings'] = settings
             
             pickle.dump(result_dict, open(rst_dir+'/adaptive_'+test_id+'_opp'+args.opp_init_id+'.p', "wb"))

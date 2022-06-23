@@ -167,7 +167,9 @@ def main(args):
 
     rst_dir = Config.ONLINE_TEST_RST_DIR
     data_dir = Config.DATA_DIR
-
+    if not os.path.exists(rst_dir):
+        os.makedirs(rst_dir, exist_ok=False) 
+            
     # a randomly generated sequence is used. You can create your own.
     policy_vectors_df = pd.read_pickle(data_dir+'online_test_policy_vectors_demo.p')
     if opponent_type == 'seen':

@@ -96,6 +96,8 @@ def main(args):
     vae_model_dir = Config.VAE_MODEL_DIR
     rl_training_rst_dir = Config.RL_TRAINING_RST_DIR
     rl_model_dir = Config.RL_MODEL_DIR
+    if not os.path.exists(rl_training_rst_dir):
+        os.makedirs(rl_training_rst_dir, exist_ok=False) 
 
     encoder_weight_path = vae_model_dir + args.encoder_file
     agent_VAE = PPO_VAE(state_dim, hidden_dim, embedding_dim, action_dim, actor_lr, critic_lr, encoder_weight_path, n_adv_pool, rl_model_dir)

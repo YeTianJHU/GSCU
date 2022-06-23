@@ -56,6 +56,7 @@ def main(args):
     test_freq = 500
 
     result_dir  = Config.RL_TRAINING_RST_DIR
+    os.makedirs(result_dir, exist_ok=False) 
 
     exp_id = args.version
     settings = {}
@@ -172,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument('-st', '--steps', default=50, help='Num of steps in a single run')
     parser.add_argument('-seed', '--seed', default=0, help='seed')
     parser.add_argument('-v', '--version', default='v0')
-    parser.add_argument('-e', '--encoder_file', default='../model_params/VAE/encoder_vae_param_demo.pt', help='file name of the encoder parameters')
+    parser.add_argument('-e', '--encoder_file', default='encoder_vae_param_demo.pt', help='file name of the encoder parameters')
     args = parser.parse_args()
 
     main(args)

@@ -11,7 +11,7 @@ from multiagent.mypolicy import *
 import multiagent.scenarios as scenarios
 from embedding_learning.opponent_models import OpponentModel
 from embedding_learning.data_generation import get_all_adv_policies
-from online_test.bayesian_update import BayesianUpdater, VariationalInference, EXP3
+from online_test.bayesian_update import VariationalInference, EXP3
 from conditional_RL.conditional_rl_model import PPO_VAE
 from conditional_RL.ppo_model import PPO
 from utils.multiple_test import *
@@ -40,14 +40,16 @@ def main(args):
     seed = args.seed
     adv_change_freq = 200
     n_opponent_per_seq = 20
+    n_episode_seq = adv_change_freq * n_opponent_per_seq
     n_seq = 5
-    num_episodes = adv_change_freq * n_opponent_per_seq * n_seq
+    num_episodes = n_episode_seq * n_seq
 
     window_size = Config.WINDOW_SIZW
     adv_pool_type = args.opp_type
 
     rst_dir = Config.ONLINE_TEST_RST_DIR
     data_dir = Config.DATA_DIR
+    os.makedirs(rst_dir, exist_ok=False) 
 
     if adv_pool_type == 'mix':
         dataloader = open(data_dir+'online_test_policy_vec_seq_8.p', 'rb')
@@ -110,7 +112,7 @@ def main(args):
 
     # GSCU use EXP3
     opponent_model_bandit = OpponentModel(16, 4, hidden_dim, embedding_dim, action_dim+2, encoder_weight_path, decoder_weight_path)
-    vi_bandit = VariationalInference(opponent_model_bandit, latent_dim=embedding_dim, n_update_times=10, game_steps=args.steps)
+    vi_bandit = VariationalInference(opponent_model_bandit, latent_dim=embedding_dim, game_steps=args.steps)
     exp3 = EXP3(n_action=2, gamma=0.2, min_reward=-200, max_reward=20)
 
     use_exp3 = True
@@ -123,7 +125,7 @@ def main(args):
 
     for i_episode in range(num_episodes):
 
-        if i_episode % 4000 == 0:
+        if i_episode % n_episode_seq == 0:
             exp3.init_weight()
             vi.init_all() 
             vi_bandit.init_all() 

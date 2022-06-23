@@ -117,6 +117,8 @@ def main(args):
     opponent_p1_ne.batch_size = batch_size
 
     rst_dir = Config.ONLINE_TEST_RST_DIR
+    if not os.path.exists(rst_dir):
+        os.makedirs(rst_dir, exist_ok=False) 
 
     Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'returns'])
     Transition_p1 = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'returns'])
