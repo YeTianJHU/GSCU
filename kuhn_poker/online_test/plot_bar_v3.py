@@ -86,11 +86,11 @@ seen_files = ['results/online_adaption_v52_0.p','results/online_adaption_v52_1.p
 unseen_file = ['results/online_adaption_v53_0.p','results/online_adaption_v53_1.p','results/online_adaption_v53_2.p','results/online_adaption_v53_3.p','results/online_adaption_v53_4.p']
 mix_file = ['results/online_adaption_v54_0.p','results/online_adaption_v54_1.p','results/online_adaption_v54_2.p','results/online_adaption_v54_3.p','results/online_adaption_v54_4.p']
 adaptive_file = [
-                '../results/online_test/online_adaption_opp_adaptive_v0_1.p',
-                '../results/online_test/online_adaption_opp_adaptive_v0_2.p',
-                '../results/online_test/online_adaption_opp_adaptive_v0_3.p',
-                '../results/online_test/online_adaption_opp_adaptive_v0_4.p',
-                '../results/online_test/online_adaption_opp_adaptive_v0_5.p',
+                '../results/online_test/online_adaption_opp_adaptive_v1_1.p',
+                '../results/online_test/online_adaption_opp_adaptive_v1_2.p',
+                '../results/online_test/online_adaption_opp_adaptive_v1_3.p',
+                '../results/online_test/online_adaption_opp_adaptive_v1_4.p',
+                '../results/online_test/online_adaption_opp_adaptive_v1_5.p',
                 ]
 
 
