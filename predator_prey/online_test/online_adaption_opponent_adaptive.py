@@ -42,7 +42,7 @@ def main(args):
     rst_dir = Config.ONLINE_TEST_RST_DIR
     if not os.path.exists(rst_dir):
         os.makedirs(rst_dir, exist_ok=False) 
-        
+
     settings = {}
     settings['opp_init_id'] = args.opp_init_id
     settings['params_exp_id'] = test_id
@@ -259,7 +259,7 @@ def main(args):
             result_dict['gscu'] = return_bandit_list
             result_dict['settings'] = settings
             
-            pickle.dump(result_dict, open(rst_dir+'/adaptive_'+test_id+'_opp'+args.opp_init_id+'.p', "wb"))
+            pickle.dump(result_dict, open(rst_dir+'/online_adaption_opp_adaptive_'+test_id+'_opp'+args.opp_init_id+'.p', "wb"))
 
             logging.info("episode: {}, opp init id: {}, gscu: {:.2f}, | greedy: {:.2f}, | pi: {:.2f}".format(
                         i_episode,args.opp_init_id,np.mean(ckp_eturn_list_bandit),np.mean(ckp_return_vae_list),np.mean(ckp_return_pi_list)))

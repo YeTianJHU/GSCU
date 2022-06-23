@@ -49,7 +49,8 @@ def main(args):
 
     rst_dir = Config.ONLINE_TEST_RST_DIR
     data_dir = Config.DATA_DIR
-    os.makedirs(rst_dir, exist_ok=False) 
+    if not os.path.exists(rst_dir):
+        os.makedirs(rst_dir, exist_ok=False) 
 
     if adv_pool_type == 'mix':
         dataloader = open(data_dir+'online_test_policy_vec_seq_8.p', 'rb')
