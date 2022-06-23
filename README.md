@@ -49,9 +49,9 @@ The running protocol for Kuhn Poker and Predator Prey are the same. Here we take
     cd GSCU/kuhn_poker/embedding_learning
     python data_generation.py 
 ```
-* To train the OI-PEL model using the data generated
+* To train the Policy2Emb model using the data generated
 ```
-    cd GSCU/kuhn_poker/VAE
+    cd GSCU/kuhn_poker/embedding_learning
     python train_vae.py 
 ```
 * To train the conditional RL model once the Policy2Emb model is ready
@@ -66,7 +66,8 @@ The running protocol for Kuhn Poker and Predator Prey are the same. Here we take
 ```
 * We provided 5 opponent initial points with ID 1~5. To run the online test for adaptive settings
 ```
-   python online_adaption_opponent_adaptive.py -oid OPPONENT_ID -e <ENCODER_NAME> -d <DECODER_NAME> -r <CONDITIONAL_RL_NAME>
+    cd GSCU/kuhn_poker/online_test
+    python online_adaption_opponent_adaptive.py -oid OPPONENT_ID -e <ENCODER_NAME> -d <DECODER_NAME> -r <CONDITIONAL_RL_NAME>
 ```
 Pre-trained weights for encoder/decoder/RL models are also provided.
 
