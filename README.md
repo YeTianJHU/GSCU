@@ -62,18 +62,7 @@ The running method for kuhn poker and predator prey are the same. Here we take k
 * To run the online test for seen/unseen/mix settings
 ```
     cd GSCU/kuhn_poker/online_test
-```
-For seen:
-```
-    python online_adaption.py -o seen -e <ENCODER_NAME> -d <DECODER_NAME> -r <RL_NAME>
-```
-For unseen:
-```
-    python online_adaption.py -o unseen -e <ENCODER_NAME> -d <DECODER_NAME> -r <RL_NAME>
-```
-For mix:
-```
-    python online_adaption.py -o mix -e <ENCODER_NAME> -d <DECODER_NAME> -r <RL_NAME>
+    python online_adaption.py -o SETTING -e <ENCODER_NAME> -d <DECODER_NAME> -r <RL_NAME>
 ```
 * To run the online test for adaptive settings
 ```
