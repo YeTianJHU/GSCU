@@ -18,7 +18,7 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 from torch.optim.lr_scheduler import StepLR 
 from embedding_learning.opponent_models import *
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 class PolicyNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, latent_dim, action_dim, init_ort=False):
