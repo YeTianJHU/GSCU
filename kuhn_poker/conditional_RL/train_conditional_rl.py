@@ -72,13 +72,13 @@ def main(args):
     # policy parameters of opponents from the seen pool
     sample_p1 = Config.SAMPLE_P1_SEEN
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
 
     gamma = 0.99
     actor_lr = 5e-4 
     critic_lr = 5e-4
     num_episodes = 300000 
-    checkpoint_freq = num_episodes//10
+    checkpoint_freq = num_episodes//30
     n_test = 10000
     evaluate_freq = num_episodes//30
 
