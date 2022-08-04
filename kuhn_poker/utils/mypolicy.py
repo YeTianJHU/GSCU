@@ -125,7 +125,7 @@ class BestResponseKuhn(Policy):
             if self.eta > self.xi: 
                 self.response_p0 = PolicyKuhn(alpha=1,beta=0,gamma=1,eta=1/3,xi=1/3) # s6
             else:
-                self.response_p0 = PolicyKuhn(alpha=0,beta=1,gamma=1,eta=1/3,xi=1/3) # s5
+                self.response_p0 = PolicyKuhn(alpha=1,beta=0,gamma=0,eta=1/3,xi=1/3) # s5
         elif self.eta <= 1/3 and self.xi > 1/3:
             self.response_p0 = PolicyKuhn(alpha=1,beta=1,gamma=0,eta=1/3,xi=1/3) # s7
         elif self.eta > 1/3 and self.xi <= 1/3:
